@@ -8,11 +8,11 @@
     <!--<DocumentationFile>$(OutputPath)/$(AssemblyTitle).xml</DocumentationFile>-->
   </PropertyGroup>
   <PropertyGroup>
-    <RootNamespace>SpellСounter</RootNamespace>
-    <AssemblyName>SpellСounter</AssemblyName>
+    <RootNamespace>SpellCounter</RootNamespace>
+    <AssemblyName>SpellCounter</AssemblyName>
     <TargetFramework>net472</TargetFramework>
-    <AssemblyTitle>SpellСounter</AssemblyTitle>
-    <Product>SpellСounter</Product>
+    <AssemblyTitle>SpellCounter</AssemblyTitle>
+    <Product>SpellCounter</Product>
     <Description>A Hollow Knight Mod</Description>
     <Copyright>Copyright ©  2026</Copyright>
     <AssemblyVersion>1.0.0.0</AssemblyVersion>
