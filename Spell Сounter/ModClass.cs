@@ -15,7 +15,7 @@ namespace SpellCounter
     public class SpellCounter : Mod, ILocalSettings<SaveSettings>, IGlobalSettings<GlobalSettings>, IMenuMod
     {
         public static SpellCounter Instance;
-        public override string GetVersion() => "1.3.0";
+        public override string GetVersion() => "1.0.1";
 
         public static SaveSettings _settings = new SaveSettings();
         public void OnLoadLocal(SaveSettings s) => _settings = s;
