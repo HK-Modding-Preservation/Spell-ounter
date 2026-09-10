@@ -1,4 +1,4 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <!-- Change this to the path of your modded HK installation -->
     <HollowKnightRefs>C:\Games\Hollow Knight\Hollow Knight\Hollow Knight_Data\Managed</HollowKnightRefs>
@@ -74,8 +74,8 @@
     <Reference Include="MMHOOK_PlayMaker">
       <HintPath>$(HollowKnightRefs)/MMHOOK_PlayMaker.dll</HintPath>
     </Reference>
-    <Reference Include="ModCommon">
-      <HintPath>..\..\..\..\..\Games\Hollow Knight\Hollow Knight\Hollow Knight_Data\Managed\Mods\ModCommon\ModCommon_1.5.dll</HintPath>
+    <Reference Include="Satchel">
+      <HintPath>..\..\..\..\..\Games\Hollow Knight\Hollow Knight\Hollow Knight_Data\Managed\Mods\ModCommon\Satchel.dll</HintPath>
     </Reference>
     <Reference Include="Mono.Cecil">
       <HintPath>$(HollowKnightRefs)/Mono.Cecil.dll</HintPath>
