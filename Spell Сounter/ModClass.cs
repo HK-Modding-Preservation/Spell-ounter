@@ -7,7 +7,6 @@ using System.Linq;
 using System.Collections.Generic;
 using System.Collections;
 using Satchel;
-using SpellCounter.Extensions;
 
 
 namespace SpellCounter
@@ -15,7 +14,7 @@ namespace SpellCounter
     public class SpellCounter : Mod, ILocalSettings<SaveSettings>, IGlobalSettings<GlobalSettings>, IMenuMod
     {
         public static SpellCounter Instance;
-        public override string GetVersion() => "1.0.1";
+        public override string GetVersion() => "1.1.0";
 
         public static SaveSettings _settings = new SaveSettings();
         public void OnLoadLocal(SaveSettings s) => _settings = s;
@@ -34,9 +33,6 @@ namespace SpellCounter
         private float pogoCooldownTimer = 0f;  // Кулдаун
         private bool lastCastingState = false; // Состояние каста из прошлого кадра
         private bool fsmSpellTriggered = false;
-        private static float TextOffset = 0.225f;
-
-        private Vector3 _geoAmountBaseLocalPos = Vector3.zero;
         private Vector3 lastHazardLocation = Vector3.zero;
         public override void Initialize()
         {
@@ -52,7 +48,6 @@ namespace SpellCounter
             On.DisplayItemAmount.OnEnable += OnDisplayAmount;
             On.UIManager.UIClosePauseMenu += (orig, self) => { orig(self); RedrawCounters(); };
             GlobalSettings.PropertyChanged += (s, e) => RedrawCounters();
-            ModCommon.ModCommon.OnSpellHook += HandleSpellCast;
             currentState = PogoState.Ready;
         }
         private float lastZeroTime = -1f;
@@ -61,18 +56,13 @@ namespace SpellCounter
         private enum PogoState { Ready, WaitingForPeak, WaitingForHit }
         private PogoState currentState = PogoState.Ready;
 
-        // Флаг для Update
         private bool spellWasCast = false;
         private bool shriekWasCast = false;
-        private bool HandleSpellCast(ModCommon.ModCommon.Spell spellType)
+
+        private void OnSpellFired(bool isScream)
         {
-            // ModCommon поймал каст
             spellWasCast = true;
-            if (spellType == ModCommon.ModCommon.Spell.Scream)
-            {
-                shriekWasCast = true;
-            }
-            return true; // true разрешить каст
+            if (isScream) shriekWasCast = true;
         }
         private float stateStartTime = -1f;
 
@@ -85,21 +75,18 @@ namespace SpellCounter
             bool isCasting = self.cState.casting;
             string hState = self.hero_state.ToString();
             bool isOnGround = hState == "idle" || hState == "running";
-            // Режим 1: SPELL COUNTER
             Vector3 currentHazard = PlayerData.instance.hazardRespawnLocation;
 
-            // Сброс при обновлении чекпоинта
-            if (GlobalSettings.ResetMode == 1)
+            if (GlobalSettings.ResetMode == 1 || GlobalSettings.ResetMode == 3)
             {
-                if (currentHazard != Vector3.zero && currentHazard != lastHazardLocation)
+                if (currentHazard != Vector3.zero && currentHazard != lastHazardLocation && GlobalSettings.CounterType == 1)
                 {
                     lastHazardLocation = currentHazard;
                     ResetCombo();
                 }
             }
 
-            // Сброс при самом респавне
-            if (GlobalSettings.ResetMode == 2 && self.cState.hazardRespawning)
+            if ((GlobalSettings.ResetMode == 2 || GlobalSettings.ResetMode == 3) && self.cState.hazardRespawning)
             {
                 ResetCombo();
             }
@@ -128,7 +115,7 @@ namespace SpellCounter
                     switch (currentState)
                     {
                         case PogoState.Ready:
-                            
+
                             if (shriekWasCast)
                             {
                                 stateStartTime = Time.time;
@@ -231,6 +218,52 @@ namespace SpellCounter
             var prefab = GameManager.instance.inventoryFSM.gameObject.FindGameObjectInChildren("Geo");
             origpos = prefab.transform.position;
             DrawHud(prefab, hudCanvas);
+
+            try
+            {
+                HookSpellControl(self);
+            }
+            catch (Exception e)
+            {
+                Log($"[SpellCounter] HookSpellControl failed - spell detection may be disabled: {e}");
+            }
+        }
+
+        private void HookSpellControl(HeroController self)
+        {
+            var fsm = self.spellControl;
+            if (fsm == null) return;
+
+
+            TryInsertCustomAction(fsm, "Fireball 1", () => OnSpellFired(false));
+            TryInsertCustomAction(fsm, "Fireball 2", () => OnSpellFired(false));
+
+            TryInsertCustomAction(fsm, "Quake1 Down", () => OnSpellFired(false));
+            TryInsertCustomAction(fsm, "Quake2 Down", () => OnSpellFired(false));
+
+            TryInsertCustomAction(fsm, "Scream Burst 1", () => OnSpellFired(true));
+            TryInsertCustomAction(fsm, "Scream Burst 2", () => OnSpellFired(true));
+        }
+
+        private void TryInsertCustomAction(PlayMakerFSM fsm, string stateName, Action action)
+        {
+            try
+            {
+                fsm.InsertCustomAction(stateName, action, 0);
+            }
+            catch (Exception e)
+            {
+                Log($"[SpellCounter] Could not hook Spell Control state '{stateName}': {e.Message}");
+            }
+        }
+
+        private void LogSpellControlStates(PlayMakerFSM fsm)
+        {
+            Log("[SpellCounter] Spell Control states:");
+            foreach (var state in fsm.FsmStates)
+            {
+                Log($"[SpellCounter]   - '{state.Name}'");
+            }
         }
 
         private void DrawHud(GameObject prefab, GameObject hudCanvas)
@@ -249,8 +282,7 @@ namespace SpellCounter
             var geoAmount = go.FindGameObjectInChildren("Geo Amount");
             if (geoAmount != null)
             {
-                _geoAmountBaseLocalPos = geoAmount.transform.localPosition;
-                ApplyTextOffset(geoAmount);
+                geoAmount.transform.localPosition -= new Vector3(0.3f, 0, 0);
             }
 
             var component = go.GetComponent<DisplayItemAmount>();
@@ -268,11 +300,7 @@ namespace SpellCounter
 
             return go;
         }
-        private void ApplyTextOffset(GameObject geoAmount)
-        {
-            if (geoAmount == null) return;
-            geoAmount.transform.localPosition = _geoAmountBaseLocalPos - new Vector3(TextOffset, 0, 0);
-        }
+
         private Sprite LoadSprite()
         {
             var resource = Assembly.GetExecutingAssembly().GetManifestResourceNames()
@@ -354,7 +382,7 @@ namespace SpellCounter
                 {
                     Name = "Reset On...",
                     Description = "Reset counter to 0 in All Spells mode",
-                    Values = new[] { "Never", "Hazard Checkpoint", "Hazard Respawn" },
+                    Values = new[] { "Never", "Hazard Checkpoint", "Hazard Respawn", "Both" },
                     Saver = opt => GlobalSettings.ResetMode = opt,
                     Loader = () => GlobalSettings.ResetMode
                 },
