@@ -1,4 +1,4 @@
-﻿using Modding;
+using Modding;
 using UnityEngine;
 using System;
 using System.Reflection;
@@ -15,7 +15,7 @@ namespace SpellCounter
     public class SpellCounter : Mod, ILocalSettings<SaveSettings>, IGlobalSettings<GlobalSettings>, IMenuMod
     {
         public static SpellCounter Instance;
-        public override string GetVersion() => "1.2.0";
+        public override string GetVersion() => "1.3.0";
 
         public static SaveSettings _settings = new SaveSettings();
         public void OnLoadLocal(SaveSettings s) => _settings = s;
@@ -34,6 +34,9 @@ namespace SpellCounter
         private float pogoCooldownTimer = 0f;  // Кулдаун
         private bool lastCastingState = false; // Состояние каста из прошлого кадра
         private bool fsmSpellTriggered = false;
+        private static float TextOffset = 0.225f;
+
+        private Vector3 _geoAmountBaseLocalPos = Vector3.zero;
         private Vector3 lastHazardLocation = Vector3.zero;
         public override void Initialize()
         {
@@ -246,7 +249,8 @@ namespace SpellCounter
             var geoAmount = go.FindGameObjectInChildren("Geo Amount");
             if (geoAmount != null)
             {
-                geoAmount.transform.localPosition -= new Vector3(0.3f, 0, 0);
+                _geoAmountBaseLocalPos = geoAmount.transform.localPosition;
+                ApplyTextOffset(geoAmount);
             }
 
             var component = go.GetComponent<DisplayItemAmount>();
@@ -264,7 +268,11 @@ namespace SpellCounter
 
             return go;
         }
-
+        private void ApplyTextOffset(GameObject geoAmount)
+        {
+            if (geoAmount == null) return;
+            geoAmount.transform.localPosition = _geoAmountBaseLocalPos - new Vector3(TextOffset, 0, 0);
+        }
         private Sprite LoadSprite()
         {
             var resource = Assembly.GetExecutingAssembly().GetManifestResourceNames()
